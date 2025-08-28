@@ -3,3 +3,5 @@ pillow
 fastapi
 pymongo
 uvicorn
+groq
+dotenv

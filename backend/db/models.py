@@ -17,3 +17,13 @@ class UsageLog(BaseModel):
     engine_hours: float
     idle_hours: float
     fuel_level: float
+
+# in db/models.py
+class Operator(BaseModel):
+    id: str # e.g., "OP101"
+    name: str
+    email: str
+
+# Add this model for the check-in endpoint
+class RentalCheckin(BaseModel):
+    equipment_id: str

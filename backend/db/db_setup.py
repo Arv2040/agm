@@ -25,4 +25,6 @@ equipment_collection = db["equipment"]
 rentals_collection = db["rentals"]
 usage_logs_collection = db["usage_logs"]
 
+operators_collection = db["operators"]
+
 print("✅ Connected to MongoDB.")

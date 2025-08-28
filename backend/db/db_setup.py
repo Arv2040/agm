@@ -14,9 +14,19 @@ def create_db():
         EngineHoursPerDay REAL,
         IdleHoursPerDay REAL,
         OperatingDays INTEGER,
-        LastOperatorID TEXT
+        LastOperatorID TEXT,
+        Uflag BOOL, 
+        Aflag BOOL,
+        latitude REAL,
+        longitude REAL,
+        EngineHoursTotal REAL,
+        Fuel_consumed_toal REAL,
+        Load_factor_percent REAL
     )
     """)
+    #Uflag: Underutilized flag
+    #Aflag: Anomaly flag 
+
 
     conn.commit()
     conn.close()

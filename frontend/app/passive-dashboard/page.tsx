@@ -210,7 +210,7 @@ export default function PassiveDashboardPage() {
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // MODIFICATION: useEffect now fetches from both APIs to calculate summary stats
+  // MODIFICATION: useEffect now calculates operational status as well
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -228,7 +228,7 @@ export default function PassiveDashboardPage() {
         const equipmentData = await equipmentRes.json();
         const demandData = await demandRes.json();
 
-        // 2. Process equipment data for the vehicle cards and active count
+        // 2. Process equipment data
         const processedEquipment: Equipment[] = equipmentData.equipment.map((item: any) => ({
           id: item._id,
           type: item.type,
@@ -241,10 +241,12 @@ export default function PassiveDashboardPage() {
         }));
         
         setEquipment(processedEquipment);
+        
+        // 3. Perform calculations for summary cards
         const activeCount = processedEquipment.filter(e => e.status === 'Active').length;
         const totalUnits = processedEquipment.length;
+        const operationalStatus = totalUnits > 0 ? Math.round((activeCount / totalUnits) * 100) : 0;
 
-        // 3. Process demand data to calculate total and average hours
         const totalRuntimeHours = demandData.demand_data.reduce(
           (sum: number, record: { runtime_hours: number }) => sum + record.runtime_hours,
           0
@@ -252,12 +254,12 @@ export default function PassiveDashboardPage() {
 
         const avgHoursPerUnit = totalUnits > 0 ? Math.round(totalRuntimeHours / totalUnits) : 0;
 
-        // 4. Update summary stats with all new dynamic values
+        // 4. Update summary stats with all four dynamic values
         setSummaryStats({
-          ...mockSummaryData, // Use mock as a base for any remaining static values
           activeEquipment: activeCount,
           totalHours: totalRuntimeHours,
           avgHoursPerUnit: avgHoursPerUnit,
+          operationalStatus: operationalStatus,
         });
         
         // Load other mock data

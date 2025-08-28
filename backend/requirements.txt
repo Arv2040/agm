@@ -1,2 +1,5 @@
 qrcode
 pillow
+fastapi
+pymongo
+uvicorn

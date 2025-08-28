@@ -1,4 +1,3 @@
-
 from pymongo import MongoClient
 import os
 from urllib.parse import quote_plus
@@ -19,7 +18,7 @@ client = MongoClient(MONGO_URI)
 
 # Get the database
 db = client["rental_system_db"] 
-
+demand_collection = db["demand_data"]
 # Define separate collections for your models
 equipment_collection = db["equipment"]
 rentals_collection = db["rentals"]

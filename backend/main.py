@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import equipment, rentals, operators, anomalies
+from .routers import equipment, rentals, operators, anomalies,demand
 
 app = FastAPI(
     title="Smart Rental Tracking API",
@@ -28,7 +28,11 @@ app.include_router(
     prefix="/anomalies", 
     tags=["Anomalies & Usage"]
 )
-
+app.include_router(
+    demand.router,
+    prefix="/demand",
+    tags=["demand"]
+)
 # Root endpoint
 @app.get("/", tags=["Root"])
 def home():

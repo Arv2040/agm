@@ -1,14 +1,11 @@
 import pandas as pd
-from pymongo import MongoClient
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
+from ..db.db_setup import demand_collection
 
-def predict_demand_from_mongo(uri, db_name, collection_name):
-    client = MongoClient(uri)
-    db = client[db_name]
-    collection = db[collection_name]
-    data = pd.DataFrame(list(collection.find()))
+def predict_demand():
+    data = pd.DataFrame(list(demand_collection.find()))
     le_type = LabelEncoder()
     le_loc = LabelEncoder()
     data["Vehicle_Type_Code"] = le_type.fit_transform(data["Vehicle_Type"])
@@ -20,5 +17,3 @@ def predict_demand_from_mongo(uri, db_name, collection_name):
     model.fit(X_train, y_train)
     data["Predicted_Demand"] = ["High" if i==1 else "Low" for i in model.predict(X)]
     return data[["Vehicle_Type", "Location", "Predicted_Demand"]]
-
-

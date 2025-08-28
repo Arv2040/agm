@@ -1,52 +1,43 @@
-import React from "react";
+"use client"
+import { useState } from "react";
+import AllTimeStats from "../components/active";
+import ActiveAnalytics from "../components/all_time";
+import Link from "next/link";
 
-const Dashboard = () => {
+export default function DealerPage() {
+  const [tab, setTab] = useState<"alltime" | "active">("alltime");
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-6">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">🚜 Dealer Analytics Dashboard</h1>
-        <p className="text-gray-600 mt-2">Overview of all vehicles and performance metrics.</p>
+        <h1 className="text-3xl font-bold">🚜 Dealer Dashboard</h1>
+        <p className="text-gray-400 mt-2">View metrics by tab.</p>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-700">Total Vehicles</h2>
-          <p className="mt-2 text-3xl font-bold text-indigo-600">120</p>
-        </div>
+      {/* Tabs */}
+      <div className="flex space-x-4 mb-6">
+        <button
+          onClick={() => setTab("alltime")}
+          className={`px-4 py-2 rounded-lg ${tab === "alltime" ? "bg-indigo-600" : "bg-gray-700 hover:bg-gray-600"} transition`}
+        >
+          All-Time Stats
+        </button>
+        <button
+          onClick={() => setTab("active")}
+          className={`px-4 py-2 rounded-lg ${tab === "active" ? "bg-yellow-500" : "bg-gray-700 hover:bg-gray-600"} transition`}
+        >
+          Active Analytics
+        </button>
+      </div>
 
-        
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-700">Operating Hours Today</h2>
-          <p className="mt-2 text-3xl font-bold text-green-500">1,450</p>
-        </div>
+     
+      {tab === "alltime" ? <AllTimeStats /> : <ActiveAnalytics />}
 
-        
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-700">Idle Hours Today</h2>
-          <p className="mt-2 text-3xl font-bold text-red-500">230</p>
-        </div>
-
-       
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-700">Active Vehicles</h2>
-          <p className="mt-2 text-3xl font-bold text-yellow-500">95</p>
-        </div>
-
-
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-700">Maintenance Due</h2>
-          <p className="mt-2 text-3xl font-bold text-pink-500">12</p>
-        </div>
-
-       
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-700">Avg Engine Hours</h2>
-          <p className="mt-2 text-3xl font-bold text-purple-600">14h</p>
-        </div>
-      </main>
+      <div className="mt-6">
+        <Link href="/" className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition">
+          ← Back
+        </Link>
+      </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

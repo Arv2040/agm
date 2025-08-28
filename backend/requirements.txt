@@ -1,2 +1,10 @@
 qrcode
 pillow
+fastapi
+pymongo
+uvicorn
+groq
+dotenv
+pandas
+scikit-learn
+xgboost

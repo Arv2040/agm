@@ -1,40 +1,47 @@
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse, FileResponse
 import qrcode
-import json
+import os
 
-def generate_qr_from_json(data, filename="equipment_qr.png"):
+app = FastAPI()
+
+QR_FOLDER = "qr_codes"
+os.makedirs(QR_FOLDER, exist_ok=True)
+
+
+@app.get("/generate_qr/{vehicle_id}")
+def generate_qr(vehicle_id: str):
+    filename = os.path.join(QR_FOLDER, f"{vehicle_id}.png")
     
-    json_data = json.dumps(data, indent=2)
     
-   
     qr = qrcode.QRCode(
-        version=None,  
+        version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
         box_size=10,
         border=4,
     )
-    qr.add_data(json_data)
+    qr.add_data(vehicle_id)
     qr.make(fit=True)
-    
-   
     img = qr.make_image(fill_color="black", back_color="white")
     img.save(filename)
-    print(f"✅ QR Code saved as {filename}")
+    
+    return JSONResponse({
+        "message": f"QR for vehicle {vehicle_id} generated successfully!",
+        "qr_file": filename
+    })
 
 
-equipment_data = {
-  "Equipment": {
-  "EquipmentID": "EQX1001",
-  "Type": "Excavator",
-  "SiteID": "S003",
-  "CheckOutDate": "2025-04-01",
-  "CheckInDate": "2025-04-16",
-  "EngineHoursPerDay": 1.5,
-  "IdleHoursPerDay": 10,
-  "OperatingDays": 15,
-  "LastOperatorID": "OP101"
-}
-
-}
+@app.get("/scan_qr/{vehicle_id}")
+def scan_qr(vehicle_id: str):
+    
+    return JSONResponse({
+        "message": f"Vehicle {vehicle_id} rented successfully! QR scanned."
+    })
 
 
-generate_qr_from_json(equipment_data, "equipment_qr.png")
+@app.get("/qr_image/{vehicle_id}")
+def get_qr_image(vehicle_id: str):
+    filepath = os.path.join(QR_FOLDER, f"{vehicle_id}.png")
+    if os.path.exists(filepath):
+        return FileResponse(filepath, media_type="image/png", filename=f"{vehicle_id}.png")
+    return JSONResponse({"error": "QR not found"})

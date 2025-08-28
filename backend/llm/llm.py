@@ -25,9 +25,4 @@ def llminfer(prompt: str, model: str = "llama-3.3-70b-versatile", temperature: f
     print("\n--- Completion finished ---")
     return full_output
 
-
-# Example usage
-if __name__ == "__main__":
-
-    text = llminfer("Write a short story about a cat and a robot.")
-    print(text)
+    

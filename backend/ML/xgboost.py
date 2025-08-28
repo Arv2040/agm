@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
-from ..db.db_setup import demand_collection
+from db.db_setup import demand_collection
 
 def predict_demand():
     data = pd.DataFrame(list(demand_collection.find()))

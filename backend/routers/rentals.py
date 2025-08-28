@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta
-from ..db.db_setup import rentals_collection, equipment_collection, operators_collection
-from ..db.models import RentalCheckout, RentalCheckin
-from ..utils import serialize_doc
+from db.db_setup import rentals_collection, equipment_collection, operators_collection
+from db.models import RentalCheckout, RentalCheckin
+from utils import serialize_doc
 
 router = APIRouter()
 

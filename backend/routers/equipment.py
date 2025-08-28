@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from ..db.db_setup import equipment_collection
-from ..db.models import Equipment
-from ..utils import serialize_doc
+from db.db_setup import equipment_collection
+from db.models import Equipment
+from utils import serialize_doc
 
 router = APIRouter()
 

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import equipment, rentals, operators, anomalies,demand
+from routers import equipment, rentals, operators, anomalies,demand
 
 app = FastAPI(
     title="Smart Rental Tracking API",

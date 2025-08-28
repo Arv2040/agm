@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from ..db.db_setup import operators_collection
-from ..db.models import Operator
+from db.db_setup import operators_collection
+from db.models import Operator
 
 router = APIRouter()
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from datetime import datetime, timedelta
-from ..db.db_setup import usage_logs_collection, rentals_collection
-from ..db.models import UsageLog
+from db.db_setup import usage_logs_collection, rentals_collection
+from db.models import UsageLog
 
 router = APIRouter()
 

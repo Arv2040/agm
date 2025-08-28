@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from ..db.db_setup import demand_collection
-from ..ML.xgboost import predict_demand
+from db.db_setup import demand_collection
+from ML.xgboost import predict_demand
 
 router = APIRouter()
 

@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Truck, Clock, Settings, TrendingUp } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
+import { useActiveState } from '../context';
 import axios from "axios";
+
 
 // Data Interfaces
 interface Equipment {
@@ -243,9 +245,11 @@ export default function PassiveDashboardPage() {
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const {open,setIsOpen} = useActiveState();
   useEffect(() => {
   const getxgboost = async () => {
     try {
+      // if(open == 2) return
       let response = await axios.get("http://localhost:8000/demand");
       const responseStr = JSON.stringify(response.data); 
       const llmresponse = await axios.post("http://localhost:8000/infer", {prompt:responseStr});

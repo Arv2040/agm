@@ -6,6 +6,8 @@ import { ChevronDown, AlertTriangle, Send, Zap } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { TypewriterText } from '@/components/TypewriterText';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
+import { useActiveState } from '../context';
+
 import {
   RadialBarChart,
   RadialBar,
@@ -315,6 +317,7 @@ function LiveTelemetryDashboard({ telemetryData, anomalyData }: { telemetryData:
 
 // ----- Main Page -----
 export default function ActiveTelemetryPage() {
+  const {open,setIsOpen} = useActiveState();
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('VEH1');
   const [telemetryData, setTelemetryData] = useState<TelemetryData>(defaultTelemetry);
   const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicleList);
@@ -335,7 +338,7 @@ export default function ActiveTelemetryPage() {
   };
 
   useEffect(() => {
-    if (!selectedVehicleId) return;
+    if (!selectedVehicleId || open == 1) return;
 
     let isCancelled = false;
 

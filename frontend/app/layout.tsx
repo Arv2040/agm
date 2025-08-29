@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { ActiveStateProvider } from './context'; // import your context provider
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} bg-cat-dark text-cat-text-primary antialiased`}>
-        {children}
+        <ActiveStateProvider>
+          {children}
+        </ActiveStateProvider>
       </body>
     </html>
   );

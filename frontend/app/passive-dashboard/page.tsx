@@ -202,7 +202,40 @@ function DemandForecastingSection({ forecastData }: { forecastData: ForecastData
     // ... (Component code remains the same)
     return <div></div>;
 }
+interface SendMailButtonProps {
+  llmres: string | undefined;
+}
 
+export function SendMailButton({ llmres }: SendMailButtonProps) {
+  const handleSendMail = async () => {
+    if (!llmres) return;
+
+    try {
+  const response = await axios.post("http://localhost:8000/mailer", {
+    to_email: "aravcr4085@gmail.com",       // replace with the target email
+    subject: "Fleet Demand Analysis",     // email subject
+    body_text: llmres || "No data available", // plain text version
+    body_html: `<pre>${llmres || "No data available"}</pre>` // optional HTML
+  });
+
+ 
+} catch (error) {
+  console.error("Error sending mail:", error);
+
+}
+
+  };
+
+  return (
+    <button
+      onClick={handleSendMail}
+      className="mt-4 px-5 py-2 bg-cat-yellow text-black font-semibold rounded-lg hover:bg-yellow-400 transition-colors shadow-md"
+      disabled={!llmres}
+    >
+      Send Mail
+    </button>
+  );
+}
 // Main Dashboard Page Component
 export default function PassiveDashboardPage() {
   const[llmres,setllmres] = useState<string>();
@@ -224,6 +257,8 @@ export default function PassiveDashboardPage() {
 
   getxgboost();
 }, []);
+
+
 
 
   // MODIFICATION: useEffect now calculates operational status as well
@@ -378,6 +413,7 @@ export default function PassiveDashboardPage() {
   <p className="text-cat-text-secondary text-sm whitespace-pre-line">
     {llmres || "Loading demand analysis..."}
   </p>
+  <SendMailButton llmres={llmres} />
 </motion.div>
 
         </motion.div>

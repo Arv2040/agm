@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Truck, Clock, Settings, TrendingUp } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
-import Image from 'next/image';
+import axios from "axios";
 
 // Data Interfaces
 interface Equipment {
@@ -205,10 +205,26 @@ function DemandForecastingSection({ forecastData }: { forecastData: ForecastData
 
 // Main Dashboard Page Component
 export default function PassiveDashboardPage() {
+  const[llmres,setllmres] = useState<string>();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+  const getxgboost = async () => {
+    try {
+      let response = await axios.get("http://localhost:8000/demand");
+      const responseStr = JSON.stringify(response.data); 
+      const llmresponse = await axios.post("http://localhost:8000/infer", {prompt:responseStr});
+      setllmres(llmresponse.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  getxgboost();
+}, []);
+
 
   // MODIFICATION: useEffect now calculates operational status as well
   useEffect(() => {
@@ -350,7 +366,20 @@ export default function PassiveDashboardPage() {
           </div>
           
           {/* Demand Forecasting */}
-          {forecastData && <DemandForecastingSection forecastData={forecastData} />}
+          <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6 }}
+  className="mb-12 bg-cat-charcoal rounded-xl p-6 border-2 border-transparent hover:border-cat-yellow transition-all duration-300 shadow-lg"
+>
+  <h2 className="text-2xl font-bold text-cat-yellow mb-4">
+    Demand Forecasting
+  </h2>
+  <p className="text-cat-text-secondary text-sm whitespace-pre-line">
+    {llmres || "Loading demand analysis..."}
+  </p>
+</motion.div>
+
         </motion.div>
       </div>
     </div>

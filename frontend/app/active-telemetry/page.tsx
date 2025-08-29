@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, AlertTriangle, Send, Zap } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
@@ -13,7 +13,6 @@ import {
   BarChart,
   Bar,
   XAxis,
-  YAxis,
   Tooltip,
   RadarChart,
   PolarGrid,
@@ -22,84 +21,71 @@ import {
   Radar
 } from 'recharts';
 
-// Data Interfaces
+// ----- Interfaces -----
 interface Vehicle {
   id: string;
   name: string;
-}
-
-interface TelemetryData {
-  fuelUsed: number; // liters
-  loadFactor: number; // percentage
-  engineHoursToday: number;
-  idleHoursToday: number;
   operatingDays: number;
 }
 
+interface TelemetryData {
+  fuelUsed: number;
+  engineHoursToday: number;
+  idleHoursToday: number;
+  operatingDays: number;
+  temperature: number;
+}
+
 interface AnomalyData {
-  damageLikelihood: number; // percentage
+  damageLikelihood: number;
   report: string;
 }
 
-// Mock API Data
-// TODO: This list will be fetched from '/api/vehicles'
+// ----- Default telemetry & anomaly -----
+const defaultTelemetry: TelemetryData = {
+  fuelUsed: 0,
+  engineHoursToday: 0,
+  idleHoursToday: 0,
+  operatingDays: 0,
+  temperature: 0,
+};
+
+const defaultAnomaly: AnomalyData = {
+  damageLikelihood: 0,
+  report: 'No anomalies detected. System operating within normal parameters.',
+};
+
+// ----- Mock Vehicles -----
 const mockVehicleList: Vehicle[] = [
-  { id: 'EQX1001', name: 'Excavator EX-1001' },
-  { id: 'EQX1002', name: 'Crane CR-1002' },
-  { id: 'EQX1003', name: 'Bulldozer BD-1003' },
+  { id: 'VEH1', name: 'Vehicle VEH1', operatingDays: 10 },
+  { id: 'VEH2', name: 'Vehicle VEH2', operatingDays: 12 },
+  { id: 'VEH3', name: 'Vehicle VEH3', operatingDays: 13 },
 ];
 
-// TODO: This data will be fetched from '/api/telemetry/{vehicleId}'
-const mockTelemetryData: { [key: string]: TelemetryData } = {
-  'EQX1001': {
-    fuelUsed: 180,
-    loadFactor: 78,
-    engineHoursToday: 8.5,
-    idleHoursToday: 1.5,
-    operatingDays: 15
-  },
-  'EQX1002': {
-    fuelUsed: 220,
-    loadFactor: 85,
-    engineHoursToday: 10,
-    idleHoursToday: 2,
-    operatingDays: 25
-  },
-  'EQX1003': {
-    fuelUsed: 195,
-    loadFactor: 72,
-    engineHoursToday: 7,
-    idleHoursToday: 1,
-    operatingDays: 10
-  }
-};
+// ----- Thresholds -----
+const TEMPERATURE_THRESHOLD = 80;
 
-// TODO: This data will be fetched from '/api/anomaly/{vehicleId}'
-const mockAnomalyData: { [key: string]: AnomalyData } = {
-  'EQX1001': {
-    damageLikelihood: 23,
-    report: 'Equipment analysis shows optimal performance with minor hydraulic pressure variations detected. Recommended maintenance window: Q2 2024. All systems operating within normal parameters with no immediate concerns identified.'
-  },
-  'EQX1002': {
-    damageLikelihood: 45,
-    report: 'Moderate wear patterns detected in crane boom assembly. Increased monitoring recommended for lifting operations above 80% capacity. Schedule preventive maintenance within 30 days to maintain optimal performance.'
-  },
-  'EQX1003': {
-    damageLikelihood: 67,
-    report: 'Significant track wear and engine temperature fluctuations observed. Immediate attention required for cooling system inspection. Recommend reducing operational load until comprehensive maintenance is completed.'
-  }
-};
+// ----- Notification Component -----
+function Notification({ message, type }: { message: string; type: 'warning' | 'danger' }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -50 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -50 }}
+      className={`fixed top-4 right-4 p-4 rounded-lg border ${
+        type === 'warning' ? 'bg-yellow-100 border-yellow-400 text-yellow-800' : 'bg-red-100 border-red-400 text-red-800'
+      } z-50 max-w-md`}
+    >
+      <div className="flex items-center space-x-2">
+        <AlertTriangle size={20} />
+        <span className="font-semibold">{message}</span>
+      </div>
+    </motion.div>
+  );
+}
 
-// Vehicle Selector Component
-function VehicleSelector({ 
-  vehicles, 
-  selectedVehicleId, 
-  onVehicleSelect 
-}: { 
-  vehicles: Vehicle[]; 
-  selectedVehicleId: string | null; 
-  onVehicleSelect: (id: string) => void; 
-}) {
+// ----- Vehicle Selector -----
+function VehicleSelector({ vehicles, selectedVehicleId, onVehicleSelect }: { vehicles: Vehicle[]; selectedVehicleId: string | null; onVehicleSelect: (id: string) => void; }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -110,8 +96,8 @@ function VehicleSelector({
         whileHover={{ scale: 1.02 }}
       >
         <span className="text-lg">
-          {selectedVehicleId 
-            ? vehicles.find(v => v.id === selectedVehicleId)?.name 
+          {selectedVehicleId
+            ? vehicles.find(v => v.id === selectedVehicleId)?.name
             : 'Select a Vehicle to View Live Telemetry'
           }
         </span>
@@ -153,10 +139,9 @@ function VehicleSelector({
   );
 }
 
-// Fuel Gauge Component
+// ----- Fuel Gauge -----
 function FuelGauge({ value, title }: { value: number; title: string }) {
   const data = [{ name: title, value, fill: '#FFCD11' }];
-  
   return (
     <div className="bg-cat-charcoal rounded-xl p-6 border border-cat-charcoal">
       <div className="flex items-center space-x-2 mb-4">
@@ -166,12 +151,7 @@ function FuelGauge({ value, title }: { value: number; title: string }) {
       <div className="relative h-48">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="90%" data={data}>
-            <RadialBar 
-              dataKey="value" 
-              cornerRadius={30} 
-              fill="#FFCD11"
-              className="drop-shadow-lg"
-            />
+            <RadialBar dataKey="value" cornerRadius={30} fill="#FFCD11" />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -179,9 +159,7 @@ function FuelGauge({ value, title }: { value: number; title: string }) {
             <div className="text-3xl font-bold text-cat-text-primary">
               <AnimatedNumber value={value} />
             </div>
-            <div className="text-cat-text-secondary text-sm">
-              {title === 'Fuel Used Today' ? 'Liters' : '% Capacity'}
-            </div>
+            <div className="text-cat-text-secondary text-sm">Liters</div>
           </div>
         </div>
       </div>
@@ -189,7 +167,7 @@ function FuelGauge({ value, title }: { value: number; title: string }) {
   );
 }
 
-// Usage Breakdown Chart
+// ----- Usage Breakdown -----
 function UsageBreakdown({ engineHours, idleHours }: { engineHours: number; idleHours: number }) {
   const data = [
     { name: 'Engine', hours: engineHours, fill: '#FFCD11' },
@@ -205,21 +183,8 @@ function UsageBreakdown({ engineHours, idleHours }: { engineHours: number; idleH
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#A1A1A1', fontSize: 12 }}
-            />
-            <YAxis hide />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#2C2C2C', 
-                border: '1px solid #FFCD11', 
-                borderRadius: '8px',
-                color: '#F5F5F5'
-              }}
-            />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#A1A1A1', fontSize: 12 }} />
+            <Tooltip contentStyle={{ backgroundColor: '#2C2C2C', border: '1px solid #FFCD11', borderRadius: '8px', color: '#F5F5F5' }} />
             <Bar dataKey="hours" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -228,7 +193,7 @@ function UsageBreakdown({ engineHours, idleHours }: { engineHours: number; idleH
   );
 }
 
-// Operating Days Display
+// ----- Operating Days -----
 function OperatingDaysCard({ days }: { days: number }) {
   return (
     <div className="bg-cat-charcoal rounded-xl p-6 border border-cat-charcoal flex flex-col items-center justify-center">
@@ -243,271 +208,187 @@ function OperatingDaysCard({ days }: { days: number }) {
   );
 }
 
-// Anomaly Detection Component
-function AnomalyDetection({ anomalyData }: { anomalyData: AnomalyData }) {
-  const radarData = [
-    { subject: 'Engine', A: anomalyData.damageLikelihood, fullMark: 100 },
-    { subject: 'Hydraulics', A: anomalyData.damageLikelihood - 5, fullMark: 100 },
-    { subject: 'Tracks', A: anomalyData.damageLikelihood + 3, fullMark: 100 },
-    { subject: 'Electrical', A: anomalyData.damageLikelihood - 8, fullMark: 100 },
-    { subject: 'Cooling', A: anomalyData.damageLikelihood + 2, fullMark: 100 },
-    { subject: 'Transmission', A: anomalyData.damageLikelihood - 3, fullMark: 100 },
-  ];
-
-  const getRiskColor = (likelihood: number) => {
-    if (likelihood < 25) return '#FFCD11';
-    if (likelihood < 60) return '#FFA500';
-    return '#FF4136';
-  };
+// ----- Sensor Data -----
+function SensorData({ temperature }: { temperature: number }) {
+  const isTempCritical = temperature > TEMPERATURE_THRESHOLD;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.2, duration: 0.8 }}
-      className="bg-cat-charcoal rounded-xl p-8 border border-cat-charcoal mt-12"
-    >
-      <div className="flex items-center space-x-3 mb-6">
-        <AlertTriangle size={28} className="text-cat-orange" />
-        <h2 className="text-2xl font-bold text-cat-text-primary">Anomaly Detection Report</h2>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left: Damage Likelihood Radar */}
-        <div>
-          <h3 className="text-lg font-semibold text-cat-text-primary mb-4">System Health Analysis</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData}>
-                <PolarGrid gridType="polygon" stroke="#A1A1A1" />
-                <PolarAngleAxis 
-                  dataKey="subject" 
-                  tick={{ fill: '#A1A1A1', fontSize: 12 }}
-                />
-                <PolarRadiusAxis 
-                  angle={90} 
-                  domain={[0, 100]} 
-                  tick={{ fill: '#A1A1A1', fontSize: 10 }}
-                />
-                <Radar
-                  name="Risk Level"
-                  dataKey="A"
-                  stroke={getRiskColor(anomalyData.damageLikelihood)}
-                  fill={getRiskColor(anomalyData.damageLikelihood)}
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-center mt-4">
-            <div className="text-3xl font-bold" style={{ color: getRiskColor(anomalyData.damageLikelihood) }}>
-              <AnimatedNumber value={anomalyData.damageLikelihood} suffix="%" />
-            </div>
-            <p className="text-cat-text-secondary">Damage Likelihood</p>
-          </div>
+    <div className="bg-cat-charcoal rounded-xl p-6 border border-cat-charcoal">
+      <h3 className="text-lg font-semibold text-cat-text-primary mb-4">Sensor Readings</h3>
+      <div className={`p-3 rounded-lg ${isTempCritical ? 'bg-red-500/20 border border-red-500' : 'bg-cat-dark/30'}`}>
+        <div className="flex justify-between items-center">
+          <span className="text-cat-text-secondary">Temperature</span>
+          <span className={`font-bold ${isTempCritical ? 'text-red-400' : 'text-cat-text-primary'}`}>
+            <AnimatedNumber value={temperature} />°C
+          </span>
         </div>
-        
-        {/* Right: AI Report */}
-        <div>
-          <h3 className="text-lg font-semibold text-cat-text-primary mb-4">AI Analysis Report</h3>
-          <div className="bg-cat-dark/50 rounded-lg p-6 mb-6 min-h-48">
-            <TypewriterText 
-              text={anomalyData.report}
-              className="text-cat-text-secondary leading-relaxed"
-              speed={30}
-            />
-          </div>
-          
-          <motion.button
-            whileHover={{ 
-              scale: 1.05,
-              boxShadow: '0 0 30px rgba(255, 205, 17, 0.3)'
-            }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full bg-gradient-to-r from-cat-orange to-cat-red text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all duration-300"
-          >
-            <Send size={20} />
-            <span>Send Alert to Customer</span>
-          </motion.button>
-          
-          {/* TODO Comment */}
-          <div className="mt-4 bg-cat-dark/30 rounded-lg p-3 border border-cat-orange/20">
-            <p className="text-cat-text-secondary text-xs font-mono">
-              TODO: Email API integration for customer alerts
-            </p>
-          </div>
-        </div>
+        {isTempCritical && <p className="text-red-400 text-sm mt-1">Warning: Temperature exceeds threshold!</p>}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-// Live Telemetry Dashboard Component
-function LiveTelemetryDashboard({ 
-  telemetryData, 
-  anomalyData 
-}: { 
-  telemetryData: TelemetryData;
-  anomalyData: AnomalyData;
-}) {
+// ----- Anomaly Radar -----
+function AnomalyRadar({ telemetryData }: { telemetryData: TelemetryData }) {
+  const radarData = [
+    { subject: 'Fuel Used', A: telemetryData.fuelUsed, fullMark: 100 },
+    { subject: 'Engine Hours', A: telemetryData.engineHoursToday * 10, fullMark: 100 },
+    { subject: 'Idle Hours', A: telemetryData.idleHoursToday * 20, fullMark: 100 },
+    { subject: 'Operating Days', A: telemetryData.operatingDays * 7, fullMark: 100 },
+    { subject: 'Temperature', A: telemetryData.temperature, fullMark: 100 },
+  ];
+
+  return (
+    <div className="bg-cat-charcoal rounded-xl p-8 border border-cat-charcoal mt-12">
+      <h2 className="text-2xl font-bold mb-4 text-cat-text-primary">System Health Radar</h2>
+      <ResponsiveContainer width="100%" height={400}>
+        <RadarChart data={radarData}>
+          <PolarGrid gridType="polygon" stroke="#A1A1A1" />
+          <PolarAngleAxis dataKey="subject" tick={{ fill: '#A1A1A1', fontSize: 12 }} />
+          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#A1A1A1', fontSize: 10 }} />
+          <Radar name="Telemetry" dataKey="A" stroke="#FFCD11" fill="#FFCD11" fillOpacity={0.3} strokeWidth={2} />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ----- AI Report & Send Alert -----
+function AIReportSection({ anomaly }: { anomaly: AnomalyData }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSendAlert = async () => {
+    setSending(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setSent(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="bg-cat-charcoal rounded-xl p-6 border border-cat-charcoal mt-8">
+      <h3 className="text-lg font-semibold text-cat-text-primary mb-4">AI-Powered Damage Report</h3>
+      <p className="text-cat-text-secondary mb-4">{anomaly.report}</p>
+      <button
+        onClick={handleSendAlert}
+        disabled={sending || sent}
+        className={`px-6 py-3 rounded-lg font-semibold text-cat-text-primary transition-colors duration-200 ${
+          sent ? 'bg-green-600' : 'bg-cat-yellow hover:bg-yellow-500'
+        }`}
+      >
+        {sending ? 'Sending...' : sent ? 'Alert Sent' : 'Send Alert via Email'}
+      </button>
+    </div>
+  );
+}
+
+// ----- Live Dashboard -----
+function LiveTelemetryDashboard({ telemetryData, anomalyData }: { telemetryData: TelemetryData; anomalyData: AnomalyData }) {
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -50 }}
-        transition={{ duration: 0.8 }}
-        className="space-y-8"
-      >
-        {/* Header */}
+      <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }} transition={{ duration: 0.8 }} className="space-y-8">
         <div className="flex items-center space-x-3 mb-8">
           <Zap size={28} className="text-cat-yellow" />
           <h2 className="text-2xl font-bold text-cat-text-primary">Live Telemetry Dashboard</h2>
         </div>
-        
-        {/* Telemetry Grid */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.2
-              }
-            }
-          }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}>
-            <FuelGauge value={telemetryData.fuelUsed} title="Fuel Used Today" />
-          </motion.div>
-          
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}>
-            <FuelGauge value={telemetryData.loadFactor} title="Load Factor" />
-          </motion.div>
-          
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}>
-            <UsageBreakdown 
-              engineHours={telemetryData.engineHoursToday} 
-              idleHours={telemetryData.idleHoursToday} 
-            />
-          </motion.div>
-          
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}>
-            <OperatingDaysCard days={telemetryData.operatingDays} />
-          </motion.div>
+
+        <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <FuelGauge value={telemetryData.fuelUsed} title="Fuel Used Today" />
+          <UsageBreakdown engineHours={telemetryData.engineHoursToday} idleHours={telemetryData.idleHoursToday} />
+          <OperatingDaysCard days={telemetryData.operatingDays} />
+          <SensorData temperature={telemetryData.temperature} />
         </motion.div>
-        
-        {/* Anomaly Detection */}
-        <AnomalyDetection anomalyData={anomalyData} />
+
+        <AnomalyRadar telemetryData={telemetryData} />
+
+        <AIReportSection anomaly={anomalyData} />
       </motion.div>
     </AnimatePresence>
   );
 }
 
-// Main Active Telemetry Page Component
+// ----- Main Page -----
 export default function ActiveTelemetryPage() {
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-  const [telemetryData, setTelemetryData] = useState<TelemetryData | null>(null);
-  const [anomalyData, setAnomalyData] = useState<AnomalyData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('VEH1');
+  const [telemetryData, setTelemetryData] = useState<TelemetryData>(defaultTelemetry);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicleList);
+  const [notifications, setNotifications] = useState<{ id: string; message: string; type: 'warning' | 'danger' }[]>([]);
+  const [anomalyData, setAnomalyData] = useState<AnomalyData>(defaultAnomaly);
+
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const telemetryRef = useRef<TelemetryData>(defaultTelemetry);
 
   useEffect(() => {
-    // TODO: Replace with actual API call to '/api/vehicles'
-    setVehicles(mockVehicleList);
-  }, []);
+    telemetryRef.current = telemetryData;
+  }, [telemetryData]);
+
+  const addNotification = (message: string, type: 'warning' | 'danger') => {
+    const newNotification = { id: Date.now().toString(), message, type };
+    setNotifications(prev => [...prev, newNotification]);
+    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== newNotification.id)), 5000);
+  };
 
   useEffect(() => {
-    if (selectedVehicleId) {
-      setIsLoading(true);
-      
-      // TODO: Replace with actual API call to '/api/telemetry/{vehicleId}'
-      setTimeout(() => {
-        setTelemetryData(mockTelemetryData[selectedVehicleId]);
-      }, 800);
-      
-      // TODO: Replace with actual API call to '/api/anomaly/{vehicleId}'
-      setTimeout(() => {
-        setAnomalyData(mockAnomalyData[selectedVehicleId]);
-        setIsLoading(false);
-      }, 1200);
-    }
-  }, [selectedVehicleId]);
+    if (!selectedVehicleId) return;
+
+    let isCancelled = false;
+
+    const fetchData = async () => {
+      try {
+        const vehicle = vehicles.find(v => v.id === selectedVehicleId)!;
+        const newTelemetry: TelemetryData = {
+          fuelUsed: telemetryRef.current.fuelUsed + Math.floor(Math.random() * 5 + 1),
+          engineHoursToday: Math.floor(Math.random() * 10 + 1),
+          idleHoursToday: Math.floor(Math.random() * 5),
+          operatingDays: vehicle.operatingDays,
+          temperature: Math.floor(Math.random() * 100),
+        };
+        setTelemetryData(newTelemetry);
+
+        // Generate anomaly report
+        const damageLikelihood = Math.min(Math.floor(Math.random() * 100), 100);
+        const report = damageLikelihood > 70
+          ? `High risk of damage detected! Likelihood: ${damageLikelihood}%. Immediate inspection recommended.`
+          : `System operating normally. Likelihood of damage: ${damageLikelihood}%.`;
+        setAnomalyData({ damageLikelihood, report });
+
+        if (newTelemetry.temperature > TEMPERATURE_THRESHOLD) {
+          addNotification(`High temperature alert: ${newTelemetry.temperature}°C (Vehicle ${selectedVehicleId})`, 'warning');
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      } finally {
+        if (!isCancelled) pollingTimeoutRef.current = setTimeout(fetchData, 3000);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isCancelled = true;
+      if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+    };
+  }, [selectedVehicleId, vehicles]);
 
   return (
-    <div className="min-h-screen bg-cat-dark">
+    <>
       <Navbar />
-      
-      <div className="pt-24 px-6 max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          {/* Header */}
-          <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-cat-text-primary mb-4">
-              Active Telemetry
-            </h1>
-            <p className="text-cat-text-secondary text-lg">
-              Real-time monitoring and predictive maintenance for your equipment
-            </p>
-          </div>
-          
-          {/* Vehicle Selector */}
-          <VehicleSelector
-            vehicles={vehicles}
-            selectedVehicleId={selectedVehicleId}
-            onVehicleSelect={setSelectedVehicleId}
-          />
-          
-          {/* Loading State */}
-          {isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center justify-center py-12"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-cat-yellow border-t-transparent rounded-full"
-              />
-            </motion.div>
-          )}
-          
-          {/* Dashboard Content */}
-          {!isLoading && telemetryData && anomalyData && (
-            <LiveTelemetryDashboard 
-              telemetryData={telemetryData} 
-              anomalyData={anomalyData} 
-            />
-          )}
-          
-          {/* Empty State */}
-          {!selectedVehicleId && !isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-24"
-            >
-              <div className="w-24 h-24 bg-cat-charcoal rounded-full flex items-center justify-center mx-auto mb-6">
-                <Zap size={32} className="text-cat-yellow" />
-              </div>
-              <h3 className="text-xl font-semibold text-cat-text-primary mb-2">
-                Select Equipment for Live Data
-              </h3>
-              <p className="text-cat-text-secondary">
-                Choose a vehicle from the dropdown to view real-time telemetry and analytics
-              </p>
-            </motion.div>
-          )}
-        </motion.div>
-      </div>
-    </div>
+      <main className="min-h-screen bg-cat-dark text-cat-text-primary">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <VehicleSelector vehicles={vehicles} selectedVehicleId={selectedVehicleId} onVehicleSelect={setSelectedVehicleId} />
+          {telemetryData && <LiveTelemetryDashboard telemetryData={telemetryData} anomalyData={anomalyData} />}
+        </div>
+      </main>
+
+      <AnimatePresence>
+        {notifications.map(n => <Notification key={n.id} message={n.message} type={n.type} />)}
+      </AnimatePresence>
+    </>
   );
 }

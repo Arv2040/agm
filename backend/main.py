@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import equipment, rentals, operators, anomalies, demand, realtime, expose_demand, infer, mailer
+from routers import equipment, rentals, operators, anomalies, demand, realtime, expose_demand, infer, mailer,scan
 
 app = FastAPI(
     title="Smart Rental Tracking API",
@@ -34,6 +34,7 @@ app.include_router(realtime.router, prefix="/anomaly", tags=["Anomaly Detection"
 app.include_router(expose_demand.router, prefix="/expose_demand", tags=["Expose Demand"])
 app.include_router(infer.router,prefix = "/infer")
 app.include_router(mailer.router,prefix="/mailer")
+app.include_router(scan.router,prefix="/scan")
 
 # --- Root endpoint ---
 @app.get("/", tags=["Root"])

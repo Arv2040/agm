@@ -8,3 +8,4 @@ dotenv
 pandas
 scikit-learn
 xgboost
+qrcode[pil]
